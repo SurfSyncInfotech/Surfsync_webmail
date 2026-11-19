@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "SurfSync Mail Payments",
+    "description": "Run these five requests from top to bottom. Create stays pending. The webhook is the request that marks it paid. Header x-api-key is surfsync-payment-test-key. The webhook signature is added automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "apiKey", "value": "surfsync-payment-test-key" },
+    { "key": "webhookSecret", "value": "surfsync-payment-test-secret" },
+    { "key": "paymentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Create payment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Payment created', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.payment.status).to.eql('pending');",
+              "  pm.collectionVariables.set('paymentId', json.payment.paymentId);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"planId\": \"business-5\",\n  \"planName\": \"Business\",\n  \"billingCycle\": \"monthly\",\n  \"amount\": 999,\n  \"currency\": \"INR\",\n  \"companyName\": \"ABC Company\",\n  \"adminEmail\": \"admin@abccompany.com\",\n  \"mailboxLimit\": 5,\n  \"storageGb\": 50\n}"
+        },
+        "url": "{{baseUrl}}/payments/create"
+      }
+    },
+    {
+      "name": "2. Check status (pending)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Status is pending', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.payment.status).to.eql('pending');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "url": "{{baseUrl}}/payments/status/{{paymentId}}"
+      }
+    },
+    {
+      "name": "3. Payment webhook (marks paid)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = pm.collectionVariables.get('webhookSecret');",
+              "const paymentId = pm.collectionVariables.get('paymentId');",
+              "if (!secret) throw new Error('webhookSecret is empty. Open the collection Variables tab.');",
+              "if (!paymentId) throw new Error('paymentId is empty. Send request 1 first.');",
+              "const raw = JSON.stringify({",
+              "  eventId: pm.variables.replaceIn('{{$guid}}'),",
+              "  event: 'payment.captured',",
+              "  paymentId: paymentId,",
+              "  amount: 999,",
+              "  currency: 'INR',",
+              "  gatewayPaymentId: 'gateway_' + Date.now()",
+              "});",
+              "pm.request.body.update({ mode: 'raw', raw: raw });",
+              "const signature = CryptoJS.HmacSHA256(raw, secret).toString(CryptoJS.enc.Hex);",
+              "pm.request.headers.upsert({ key: 'X-Payment-Signature', value: signature });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Webhook marked the payment paid', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.payment.status).to.eql('paid');",
+              "  pm.expect(json.onboarding.ready).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"event\": \"payment.captured\",\n  \"paymentId\": \"{{paymentId}}\",\n  \"amount\": 999,\n  \"currency\": \"INR\",\n  \"gatewayPaymentId\": \"gateway_{{$timestamp}}\"\n}"
+        },
+        "url": "{{baseUrl}}/payments/webhook"
+      }
+    },
+    {
+      "name": "4. Check status (paid)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Status is paid', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.payment.status).to.eql('paid');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "url": "{{baseUrl}}/payments/status/{{paymentId}}"
+      }
+    },
+    {
+      "name": "5. Payment history",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('History includes the payment', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.count).to.be.above(0);",
+              "  const found = json.payments.some((item) => item.paymentId === pm.collectionVariables.get('paymentId') && item.status === 'paid');",
+              "  pm.expect(found).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "url": "{{baseUrl}}/payments?adminEmail=admin@abccompany.com"
+      }
+    }
+  ]
+}
