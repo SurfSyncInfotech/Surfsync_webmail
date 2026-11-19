@@ -1,0 +1,4 @@
+.env
+data/onboarding.json
+data/*.tmp
+data/*.lock

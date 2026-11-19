@@ -1,0 +1,158 @@
+{
+  "info": {
+    "name": "SurfSync Mail Auth",
+    "description": "Run these five requests from top to bottom. Register creates a customer. Reset uses the token returned by request 3. The local test returns that token because welcome email is a later step.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4001" },
+    { "key": "email", "value": "customer@abccompany.com" },
+    { "key": "password", "value": "Welcome123" },
+    { "key": "newPassword", "value": "Welcome456" },
+    { "key": "resetToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Account created', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('customer');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"ABC Customer\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "2. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Login successful', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('customer');",
+              "  pm.expect(json.token).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "3. Start password reset",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Reset token is ready', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.resetToken).to.be.a('string');",
+              "  pm.collectionVariables.set('resetToken', json.resetToken);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/reset-password"
+      }
+    },
+    {
+      "name": "4. Set new password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Password updated', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.message).to.eql('Password updated');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resetToken\": \"{{resetToken}}\",\n  \"password\": \"{{newPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/reset-password"
+      }
+    },
+    {
+      "name": "5. Login with new password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('New password works', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.email).to.eql(pm.collectionVariables.get('email'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{newPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login"
+      }
+    }
+  ]
+}

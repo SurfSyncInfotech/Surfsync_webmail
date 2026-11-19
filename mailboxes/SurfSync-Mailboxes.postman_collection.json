@@ -1,0 +1,172 @@
+{
+  "info": {
+    "name": "SurfSync Mail Mailboxes",
+    "description": "Run onboarding and domains first. Paste the company admin temporary password into companyAdminPassword. abccompany.test must already be verified. These requests create info@ and hr@, reset info@, then delete hr@.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4006" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "companyAdminPassword", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "employeePassword", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Company Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company admin logged in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('company_admin');",
+              "  pm.collectionVariables.set('token', json.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@abccompany.com\",\n  \"password\": \"{{companyAdminPassword}}\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "2. Create info mailbox",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Mailbox created inside the plan limit', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.mailbox.email).to.eql('info@abccompany.test');",
+              "  pm.expect(json.mailbox.status).to.eql('active');",
+              "  pm.collectionVariables.set('employeePassword', json.temporaryPassword);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"info@abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/mailboxes"
+      }
+    },
+    {
+      "name": "3. Create hr mailbox",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Second mailbox created', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.mailbox.email).to.eql('hr@abccompany.test');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"hr@abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/mailboxes"
+      }
+    },
+    {
+      "name": "4. Reset info password",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Employee password reset', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.email).to.eql('info@abccompany.test');",
+              "  pm.expect(json.temporaryPassword).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"info@abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/mailboxes/reset-password"
+      }
+    },
+    {
+      "name": "5. Delete hr mailbox",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Mailbox deleted', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.email).to.eql('hr@abccompany.test');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"hr@abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/mailboxes/delete"
+      }
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "SurfSync Mail Super Admin",
+    "description": "Run from top to bottom. Login uses the auth service. Dashboard, company list, suspend, and reactivate require the Super Admin token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4003" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "token", "value": "" },
+    { "key": "companyId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Super Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Super Admin logged in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('super_admin');",
+              "  pm.collectionVariables.set('token', json.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@surfsync.test\",\n  \"password\": \"Admin12345\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "2. Dashboard",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Dashboard returned', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.dashboard.totalCompanies).to.be.above(0);",
+              "  pm.expect(json.dashboard).to.have.property('revenue');",
+              "  pm.expect(json.dashboard).to.have.property('activeSubscriptions');",
+              "  pm.expect(json.dashboard.storage).to.have.property('usedGb');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/admin/dashboard"
+      }
+    },
+    {
+      "name": "3. List companies",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Companies include domains and mailboxes', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.count).to.be.above(0);",
+              "  pm.expect(json.companies[0].domains.length).to.be.above(0);",
+              "  pm.expect(json.companies[0].mailboxes.length).to.be.above(0);",
+              "  const abc = json.companies.find((item) => item.name === 'ABC Company');",
+              "  pm.collectionVariables.set('companyId', abc.companyId);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/admin/companies"
+      }
+    },
+    {
+      "name": "4. Suspend company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company suspended', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.company.status).to.eql('suspended');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"status\": \"suspended\"\n}"
+        },
+        "url": "{{baseUrl}}/admin/companies/status"
+      }
+    },
+    {
+      "name": "5. Reactivate company",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company reactivated', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.company.status).to.eql('active');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"status\": \"active\"\n}"
+        },
+        "url": "{{baseUrl}}/admin/companies/status"
+      }
+    }
+  ]
+}

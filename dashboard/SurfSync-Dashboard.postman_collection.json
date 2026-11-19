@@ -1,0 +1,69 @@
+{
+  "info": {
+    "name": "SurfSync Mail Company Dashboard",
+    "description": "Run onboarding first. Paste the company admin temporary password into companyAdminPassword, then run both requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4007" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "companyAdminPassword", "value": "" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Company Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company admin logged in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.collectionVariables.set('token', json.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@abccompany.com\",\n  \"password\": \"{{companyAdminPassword}}\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "2. Company dashboard",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Dashboard shows plan usage', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.dashboard.mailboxes.allowed).to.eql(5);",
+              "  pm.expect(json.dashboard.storage.allowedGb).to.eql(50);",
+              "  pm.expect(json.dashboard.subscription.renewalDate).to.be.a('string');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{baseUrl}}/company/dashboard"
+      }
+    }
+  ]
+}

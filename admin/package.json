@@ -1,0 +1,10 @@
+{
+  "name": "surfsync-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SurfSync Mail super admin APIs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

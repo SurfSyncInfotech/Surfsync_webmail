@@ -1,0 +1,10 @@
+{
+  "name": "surfsync-mail",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SurfSync Mail employee mail APIs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

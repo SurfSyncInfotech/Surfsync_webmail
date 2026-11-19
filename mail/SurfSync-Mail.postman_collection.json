@@ -1,0 +1,173 @@
+{
+  "info": {
+    "name": "SurfSync Mail Employee Mail",
+    "description": "Create info@abccompany.test first. Paste that mailbox temporary password into employeePassword. If you reset the password later, paste the newest one. Then run these requests from top to bottom.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4008" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "employeePassword", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "messageId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as employee",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Employee logged in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('employee');",
+              "  pm.collectionVariables.set('token', json.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"info@abccompany.test\",\n  \"password\": \"{{employeePassword}}\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "2. Send mail",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Message sent', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.delivered).to.eql(true);",
+              "  pm.collectionVariables.set('messageId', json.inboxMessageId);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": \"info@abccompany.test\",\n  \"subject\": \"Hello from SurfSync\",\n  \"body\": \"This is a test message.\"\n}"
+        },
+        "url": "{{baseUrl}}/mail/send"
+      }
+    },
+    {
+      "name": "3. List inbox",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Inbox contains the message', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.folder).to.eql('inbox');",
+              "  pm.expect(json.count).to.be.above(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"folder\": \"inbox\"\n}"
+        },
+        "url": "{{baseUrl}}/mail/list"
+      }
+    },
+    {
+      "name": "4. Read mail",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Message body returned', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.message.subject).to.eql('Hello from SurfSync');",
+              "  pm.expect(json.message.body).to.eql('This is a test message.');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"messageId\": \"{{messageId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/mail/read"
+      }
+    },
+    {
+      "name": "5. List sent",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Sent folder contains the message', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.folder).to.eql('sent');",
+              "  pm.expect(json.count).to.be.above(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"folder\": \"sent\"\n}"
+        },
+        "url": "{{baseUrl}}/mail/list"
+      }
+    }
+  ]
+}

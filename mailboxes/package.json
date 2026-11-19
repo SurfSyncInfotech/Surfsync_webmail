@@ -1,0 +1,10 @@
+{
+  "name": "surfsync-mailboxes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SurfSync Mail mailbox APIs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

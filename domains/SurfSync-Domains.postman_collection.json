@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "SurfSync Mail Domains",
+    "description": "Run onboarding first. Copy the temporary password into the collection variable companyAdminPassword. Then run these three requests from top to bottom. abccompany.test is a local test domain, so verification can succeed here. A real domain is verified only when its public DNS matches.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4005" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "companyAdminPassword", "value": "" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Login as Company Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company admin logged in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('company_admin');",
+              "  pm.collectionVariables.set('token', json.token);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@abccompany.com\",\n  \"password\": \"{{companyAdminPassword}}\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "2. Add domain",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('DNS records returned', function () {",
+              "  pm.response.to.have.status(201);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.verified).to.eql(false);",
+              "  pm.expect(json.records.map((item) => item.type)).to.eql(['MX', 'TXT', 'TXT', 'TXT']);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"domain\": \"abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/domains"
+      }
+    },
+    {
+      "name": "3. Verify domain",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Test domain verified', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.verified).to.eql(true);",
+              "  pm.expect(json.checks.mx).to.eql(true);",
+              "  pm.expect(json.checks.spf).to.eql(true);",
+              "  pm.expect(json.checks.dkim).to.eql(true);",
+              "  pm.expect(json.checks.dmarc).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"domain\": \"abccompany.test\"\n}"
+        },
+        "url": "{{baseUrl}}/domains/verify"
+      }
+    }
+  ]
+}

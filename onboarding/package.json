@@ -1,0 +1,10 @@
+{
+  "name": "surfsync-onboarding",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SurfSync Mail company onboarding API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

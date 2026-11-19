@@ -17,11 +17,26 @@ function read() {
   }
 }
 
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function write(data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
-  fs.renameSync(tmp, file);
+  let lastError;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      fs.renameSync(tmp, file);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (error.code !== 'EPERM' && error.code !== 'EBUSY') throw error;
+      sleep(40 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 function update(mutator) {

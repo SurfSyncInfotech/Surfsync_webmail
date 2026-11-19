@@ -1,0 +1,136 @@
+{
+  "info": {
+    "name": "SurfSync Mail Onboarding",
+    "description": "Run from top to bottom. This uses the paid payment pay_865d33722c4d1c2b. A failed or pending payment cannot create a company. The temporary password is returned once.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4004" },
+    { "key": "authUrl", "value": "http://localhost:4001" },
+    { "key": "apiKey", "value": "surfsync-onboarding-test-key" },
+    { "key": "paymentId", "value": "pay_865d33722c4d1c2b" },
+    { "key": "temporaryPassword", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Complete onboarding",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Workspace created from a paid payment', function () {",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.company.subscription.mailboxLimit).to.eql(5);",
+              "  pm.expect(json.company.subscription.storageGb).to.eql(50);",
+              "  pm.expect(json.admin.role).to.eql('company_admin');",
+              "  if (json.welcome && json.welcome.temporaryPassword) {",
+              "    pm.collectionVariables.set('temporaryPassword', json.welcome.temporaryPassword);",
+              "  }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"paymentId\": \"{{paymentId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/onboarding/complete"
+      }
+    },
+    {
+      "name": "2. Onboarding status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Onboarding is completed', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.paymentStatus).to.eql('paid');",
+              "  pm.expect(json.onboarding).to.eql('completed');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "x-api-key", "value": "{{apiKey}}" }],
+        "url": "{{baseUrl}}/onboarding/{{paymentId}}"
+      }
+    },
+    {
+      "name": "3. Login as Company Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Company admin can log in', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.user.role).to.eql('company_admin');",
+              "  pm.expect(json.user.email).to.eql('admin@abccompany.com');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@abccompany.com\",\n  \"password\": \"{{temporaryPassword}}\"\n}"
+        },
+        "url": "{{authUrl}}/auth/login"
+      }
+    },
+    {
+      "name": "4. Complete onboarding again",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const json = pm.response.json();",
+              "pm.test('Second call does not create another company', function () {",
+              "  pm.response.to.have.status(200);",
+              "  pm.expect(json.success).to.eql(true);",
+              "  pm.expect(json.message).to.eql('Company workspace already created');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-api-key", "value": "{{apiKey}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"paymentId\": \"{{paymentId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/onboarding/complete"
+      }
+    }
+  ]
+}

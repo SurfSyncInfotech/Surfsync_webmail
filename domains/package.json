@@ -1,0 +1,10 @@
+{
+  "name": "surfsync-domains",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SurfSync Mail domain APIs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
